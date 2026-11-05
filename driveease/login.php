@@ -5,7 +5,6 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-// Fungsi menentukan halaman berdasarkan role
 function arahkanSetelahLogin($role, $redirect = 'index.php')
 {
     if ($role === 'admin') {
