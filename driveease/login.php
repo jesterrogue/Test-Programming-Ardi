@@ -16,7 +16,6 @@ function arahkanSetelahLogin($role, $redirect = 'index.php')
     exit;
 }
 
-// Jika sudah login, arahkan sesuai role
 if (isset($_SESSION['user_id'])) {
     $role = $_SESSION['role'] ?? 'pelanggan';
 
@@ -30,7 +29,6 @@ if (empty($_SESSION['csrf_token'])) {
 $errors = [];
 $noSim = '';
 
-// Batasi tujuan redirect agar tidak bisa diarahkan ke situs luar
 $redirect = $_GET['redirect'] ?? $_POST['redirect'] ?? 'index.php';
 
 if (!preg_match('/^booking\.php\?id=[1-9][0-9]*$/', $redirect)) {
@@ -42,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $noSim = trim($_POST['no_sim'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // Validasi CSRF
     if (
         !isset($_POST['csrf_token']) ||
         !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
@@ -50,12 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Permintaan tidak valid. Silakan muat ulang halaman.';
     }
 
-    // Validasi nomor SIM
     if ($noSim === '' || strlen($noSim) > 30) {
         $errors[] = 'Nomor SIM tidak valid.';
     }
 
-    // Validasi password
     if ($password === '') {
         $errors[] = 'Password wajib diisi.';
     }
@@ -79,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user && password_verify($password, $user['password'])) {
 
-            // Perbarui hash jika algoritma default berubah
             if (password_needs_rehash(
                 $user['password'],
                 PASSWORD_DEFAULT
@@ -98,18 +92,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
 
-            // Regenerasi session ID
             session_regenerate_id(true);
 
-            // Simpan informasi pengguna
             $_SESSION['user_id'] = $user['id_user'];
             $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
             $_SESSION['role'] = $user['role'];
 
-            // Buat token CSRF baru setelah login
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-            // Arahkan berdasarkan role
             arahkanSetelahLogin($user['role'], $redirect);
 
         } else {
