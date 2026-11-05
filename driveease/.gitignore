@@ -1,0 +1,10 @@
+/config/database.php
+
+*.log
+
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+/tmp/
