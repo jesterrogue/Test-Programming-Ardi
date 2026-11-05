@@ -5,9 +5,23 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
-if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+// Fungsi menentukan halaman berdasarkan role
+function arahkanSetelahLogin($role, $redirect = 'index.php')
+{
+    if ($role === 'admin') {
+        header('Location: admin/index.php');
+        exit;
+    }
+
+    header('Location: ' . $redirect);
     exit;
+}
+
+// Jika sudah login, arahkan sesuai role
+if (isset($_SESSION['user_id'])) {
+    $role = $_SESSION['role'] ?? 'pelanggan';
+
+    arahkanSetelahLogin($role);
 }
 
 if (empty($_SESSION['csrf_token'])) {
@@ -20,9 +34,7 @@ $noSim = '';
 // Batasi tujuan redirect agar tidak bisa diarahkan ke situs luar
 $redirect = $_GET['redirect'] ?? $_POST['redirect'] ?? 'index.php';
 
-if (
-    !preg_match('/^booking\.php\?id=[1-9][0-9]*$/', $redirect)
-) {
+if (!preg_match('/^booking\.php\?id=[1-9][0-9]*$/', $redirect)) {
     $redirect = 'index.php';
 }
 
@@ -31,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $noSim = trim($_POST['no_sim'] ?? '');
     $password = $_POST['password'] ?? '';
 
+    // Validasi CSRF
     if (
         !isset($_POST['csrf_token']) ||
         !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
@@ -38,30 +51,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Permintaan tidak valid. Silakan muat ulang halaman.';
     }
 
+    // Validasi nomor SIM
     if ($noSim === '' || strlen($noSim) > 30) {
         $errors[] = 'Nomor SIM tidak valid.';
     }
 
+    // Validasi password
     if ($password === '') {
         $errors[] = 'Password wajib diisi.';
     }
 
     if (empty($errors)) {
 
-$stmt = $pdo->prepare("
-    SELECT
-        id_user,
-        nama_lengkap,
-        no_sim,
-        password,
-        role
-    FROM users
-    WHERE no_sim = :no_sim
-    LIMIT 1
-");
+        $stmt = $pdo->prepare("
+            SELECT
+                id_user,
+                nama_lengkap,
+                no_sim,
+                password,
+                role
+            FROM users
+            WHERE no_sim = :no_sim
+            LIMIT 1
+        ");
 
-$stmt->execute(['no_sim' => $noSim]);
-$user = $stmt->fetch();
+        $stmt->execute(['no_sim' => $noSim]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user && password_verify($password, $user['password'])) {
 
@@ -84,20 +99,22 @@ $user = $stmt->fetch();
                 ]);
             }
 
+            // Regenerasi session ID
             session_regenerate_id(true);
 
+            // Simpan informasi pengguna
             $_SESSION['user_id'] = $user['id_user'];
             $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
             $_SESSION['role'] = $user['role'];
 
-            // Buat token baru setelah login
+            // Buat token CSRF baru setelah login
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-            header('Location: ' . $redirect);
-            exit;
+            // Arahkan berdasarkan role
+            arahkanSetelahLogin($user['role'], $redirect);
 
         } else {
-            $errors[] = 'Sim atau password salah.';
+            $errors[] = 'SIM atau password salah.';
         }
     }
 }
@@ -142,18 +159,18 @@ require_once 'includes/header.php';
                 value="<?= e($redirect) ?>"
             >
 
-<div class="auth-form-group">
-    <label for="no_sim">Nomor SIM</label>
-    <input
-        type="text"
-        id="no_sim"
-        name="no_sim"
-        value="<?= e($noSim) ?>"
-        placeholder="Masukkan Nomor SIM"
-        maxlength="30"
-        required
-    >
-</div>
+            <div class="auth-form-group">
+                <label for="no_sim">Nomor SIM</label>
+                <input
+                    type="text"
+                    id="no_sim"
+                    name="no_sim"
+                    value="<?= e($noSim) ?>"
+                    placeholder="Masukkan Nomor SIM"
+                    maxlength="30"
+                    required
+                >
+            </div>
 
             <div class="auth-form-group">
                 <label for="password">Password</label>
